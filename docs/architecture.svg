@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+<style>
+text{font-family:Arial,sans-serif;fill:#222}.title{font-size:25px;font-weight:bold}
+.box{fill:white;stroke:#333;stroke-width:2;rx:12}.main{fill:#f3f3f3}
+.label{font-size:18px;font-weight:bold}.small{font-size:14px}.line{stroke:#333;stroke-width:2}
+</style>
+<text x="450" y="38" text-anchor="middle" class="title">Product Manager Architecture</text>
+<rect x="330" y="70" width="240" height="80" class="box"/>
+<text x="450" y="104" text-anchor="middle" class="label">Browser / curl</text>
+<text x="450" y="130" text-anchor="middle" class="small">Web UI + Public API</text>
+<line x1="450" y1="150" x2="450" y2="205" class="line"/>
+<rect x="300" y="205" width="300" height="105" class="box main"/>
+<text x="450" y="243" text-anchor="middle" class="label">Vercel</text>
+<text x="450" y="270" text-anchor="middle" class="small">Node.js + Express</text>
+<text x="450" y="294" text-anchor="middle" class="small">CRUD + validation + API</text>
+<line x1="350" y1="310" x2="230" y2="380" class="line"/>
+<line x1="550" y1="310" x2="670" y2="380" class="line"/>
+<rect x="100" y="380" width="260" height="95" class="box"/>
+<text x="230" y="416" text-anchor="middle" class="label">Neon PostgreSQL</text>
+<text x="230" y="444" text-anchor="middle" class="small">Persistent product data</text>
+<rect x="540" y="380" width="260" height="95" class="box"/>
+<text x="670" y="416" text-anchor="middle" class="label">Vercel Blob</text>
+<text x="670" y="444" text-anchor="middle" class="small">Persistent PNG / JPG files</text>
+<rect x="35" y="215" width="190" height="80" class="box"/>
+<text x="130" y="247" text-anchor="middle" class="label">Vercel Cron</text>
+<text x="130" y="273" text-anchor="middle" class="small">automatic daily task</text>
+<line x1="225" y1="255" x2="300" y2="255" class="line"/>
+</svg>
