@@ -1,146 +1,167 @@
-# Product Manager — simple Vercel version
+# CHANGES — Product Manager Vercel
 
-## Stack
+Only these files were changed:
 
-- Vercel — PaaS
-- Node.js + Express — web app
-- Neon PostgreSQL — persistent database
-- Vercel Blob — persistent PNG/JPG file storage
-- Vercel Cron — automatic background task
-- EJS — one simple HTML template
+- `server.js`
+- `views/index.ejs`
+- `package.json`
+- `README.md`
 
-## Requirements covered
+`vercel.json` stays unchanged and already contains the automatic Cron:
 
-| Requirement | Solution |
-|---|---|
-| PaaS | Vercel |
-| CRUD + list | Create, list/read, edit, delete |
-| 4+ data types | String, Integer, Decimal, Boolean, Date |
-| Web app | Express + EJS |
-| Public API | `GET /api/products` |
-| Background task | Vercel Cron |
-| DB persistence | Neon PostgreSQL |
-| File persistence | Vercel Blob |
-| Architecture drawing | `docs/architecture.svg` |
-
-## Files
-
-- `server.js` — almost all application logic.
-- `views/index.ejs` — the only HTML page + minimal CSS.
-- `package.json` — Node dependencies.
-- `vercel.json` — automatic Cron schedule.
-- `docs/architecture.svg` — architecture drawing.
-- `.gitignore` — files Git should ignore.
-- `.env.example` — example environment variables.
-
-## 5 different data types
-
-- `name` → String
-- `quantity` → Integer
-- `price` → Decimal / Number
-- `available` → Boolean
-- `restock_date` → Date
-
-Create and Update both use the same `validateProduct()` function.
-
-## Background task
-
-Vercel automatically calls:
-
-`GET /api/cron/stock-check`
-
-The task changes products with `quantity = 0` to `available = false`.
-
-On Vercel Hobby it is scheduled once per day. The page also has **Run now for demo** so you can demonstrate the exact same operation immediately.
-
-# Deploy
-
-## 1. GitHub
-
-Open the project folder in VS Code terminal:
-
-```powershell
-git init
-git add .
-git commit -m "Create Vercel CRUD app"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPO_URL
-git push -u origin main
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/stock-check",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
 ```
 
-If origin already exists:
+That means Vercel automatically calls the stock-check route every day at 06:00 UTC.
 
-```powershell
-git remote set-url origin YOUR_GITHUB_REPO_URL
-git push -u origin main
+## New API endpoints
+
+```text
+GET     /api/products
+GET     /api/products/:id
+POST    /api/products
+PUT     /api/products/:id
+PATCH   /api/products/:id
+DELETE  /api/products/:id
+
+GET     /api/storage
+GET     /api/background-runs
+POST    /api/background/run
+GET     /api/status
 ```
 
-## 2. Vercel
+## Where is file storage?
 
-1. Vercel → **Add New → Project**.
-2. Import the GitHub repository.
-3. Click **Deploy**.
-4. Express is detected automatically.
+Uploaded PNG/JPG files are NOT stored in Neon.
 
-At first the site may show `Database not connected`. That is expected until Neon is added.
+They are stored in **Vercel Blob**.
 
-## 3. Add database
+Create it in:
 
-1. Open your Vercel project.
-2. Open **Storage / Marketplace**.
-3. Add **Neon**.
-4. Choose the free plan and connect it to this project.
-5. Make sure `DATABASE_URL` is added to the project.
-6. Redeploy.
+```text
+Vercel
+→ your project
+→ Storage
+→ Create Database
+→ Blob
+→ Continue
+→ Access = Public
+→ Create
+```
 
-No manual SQL setup is required. `server.js` creates the tables automatically.
+Use **Public** because the web page displays the uploaded images directly.
 
-## 4. Add file storage
+After the Blob store is connected, redeploy the project.
 
-1. Open the Vercel project → **Storage**.
-2. Create/connect **Vercel Blob**.
-3. Use public access for product images.
-4. Connect it to this project.
-5. Redeploy.
+Then open:
 
-Now uploaded PNG/JPG files are stored in Vercel Blob.
+```text
+https://deivascrud.vercel.app/api/storage
+```
 
-## 5. Test
+It will show JSON with all uploaded files.
 
-Create:
+The main page also now has a **Vercel Blob storage** section listing the files.
 
-- Name: Keyboard
-- Quantity: 5
-- Price: 49.99
-- Available: Yes
-- Restock date: 2026-10-20
-- Image: any PNG/JPG
+## Important
 
-Then test Edit and Delete.
+The package was updated to:
 
-## 6. Public API
+```text
+@vercel/blob 2.8.x
+```
+
+so the current Vercel Blob authentication/setup is supported.
+
+## Deploy these changes
+
+Replace the four files in your existing project.
+
+Then in VS Code terminal:
+
+```powershell
+npm install
+git add server.js views/index.ejs package.json README.md package-lock.json
+git commit -m "Add full API storage status and background logs"
+git push
+```
+
+If `package-lock.json` does not exist yet, run `npm install` first.
+
+Vercel should automatically redeploy after the GitHub push.
+
+## Check after deploy
 
 Open:
 
-`https://YOUR-PROJECT.vercel.app/api/products`
-
-or:
-
-```powershell
-curl https://YOUR-PROJECT.vercel.app/api/products
+```text
+https://deivascrud.vercel.app/api/status
 ```
 
-## 7. Background task demo
+You should get something like:
 
-Create a product with:
+```json
+{
+  "platform": "Vercel",
+  "database": {
+    "provider": "Neon PostgreSQL",
+    "connected": true
+  },
+  "fileStorage": {
+    "provider": "Vercel Blob",
+    "connected": true
+  },
+  "backgroundTask": {
+    "provider": "Vercel Cron",
+    "automatic": true
+  }
+}
+```
 
-- Quantity = 0
-- Available = Yes
+Then check:
 
-Press **Run now for demo**.
+```text
+https://deivascrud.vercel.app/api/storage
+```
 
-It becomes unavailable.
+If it says `connected: false`, Blob is not connected yet.
 
-## Short defence text
+## Background proof
 
-> The application is written in Node.js with Express and deployed on Vercel. Neon PostgreSQL stores product data persistently, and Vercel Blob stores uploaded image files. The application supports Create, Read/List, Update and Delete. Create and Update validate five different data types: string, integer, decimal, boolean and date. A public API is available at `/api/products`. Vercel Cron automatically runs a background task that marks zero-stock products unavailable.
+Create a product:
+
+```text
+Name: Test
+Quantity: 0
+Available: Yes
+```
+
+The automatic Cron will eventually change it to:
+
+```text
+Available: No
+```
+
+Background runs are saved in Neon.
+
+Open:
+
+```text
+/api/background-runs
+```
+
+Automatic runs have:
+
+```text
+source = vercel-cron
+```
+
+For the classroom demo you can click **Run now for demo**; that uses the same background function, but the log source is `manual-demo`.

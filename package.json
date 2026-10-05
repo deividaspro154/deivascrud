@@ -1,6 +1,6 @@
 {
   "name": "product-manager-vercel-simple",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
-    "@vercel/blob": "^1.0.2",
+    "@vercel/blob": "^2.8.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "multer": "^2.0.2"

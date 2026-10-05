@@ -4,61 +4,254 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Product Manager</title>
+
   <style>
-    body{font-family:Arial,sans-serif;max-width:1050px;margin:40px auto;padding:0 16px;background:#f6f6f6;color:#222}
-    .small{color:#666;font-size:14px}.card{background:#fff;border:1px solid #ddd;padding:18px;margin:18px 0;border-radius:8px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{font-weight:bold}
-    input{width:100%;box-sizing:border-box;padding:9px;margin-top:5px;border:1px solid #bbb;border-radius:5px}
-    input[type=checkbox]{width:auto}.button,button{border:0;border-radius:5px;padding:8px 12px;background:#222;color:#fff;text-decoration:none;cursor:pointer}
-    .secondary{background:#666}.danger{background:#a61b1b}table{width:100%;border-collapse:collapse;background:#fff}
-    th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left;vertical-align:middle}th{background:#eee}
-    img{width:55px;height:55px;object-fit:cover;border-radius:5px}.actions{display:flex;gap:6px;align-items:center}.actions form{margin:0}
-    .message{background:#e7f6e7;border:1px solid #91c891;padding:10px;border-radius:5px}.error{background:#ffe8e8;border:1px solid #d99;padding:10px;border-radius:5px}
-    code{background:#eee;padding:2px 5px;border-radius:4px}@media(max-width:700px){.grid{grid-template-columns:1fr}table{font-size:13px}}
+    body{
+      font-family:Arial,sans-serif;
+      max-width:1100px;
+      margin:40px auto;
+      padding:0 16px;
+      background:#f6f6f6;
+      color:#222
+    }
+    .small{color:#666;font-size:14px}
+    .card{
+      background:#fff;
+      border:1px solid #ddd;
+      padding:18px;
+      margin:18px 0;
+      border-radius:8px
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px
+    }
+    .status-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin:18px 0
+    }
+    .status{
+      background:white;
+      border:1px solid #ddd;
+      padding:14px;
+      border-radius:8px
+    }
+    .ok{color:#167029;font-weight:bold}
+    .bad{color:#a61b1b;font-weight:bold}
+    label{font-weight:bold}
+    input{
+      width:100%;
+      box-sizing:border-box;
+      padding:9px;
+      margin-top:5px;
+      border:1px solid #bbb;
+      border-radius:5px
+    }
+    input[type=checkbox]{width:auto}
+    .button,button{
+      border:0;
+      border-radius:5px;
+      padding:8px 12px;
+      background:#222;
+      color:#fff;
+      text-decoration:none;
+      cursor:pointer
+    }
+    .secondary{background:#666}
+    .danger{background:#a61b1b}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      background:#fff
+    }
+    th,td{
+      padding:9px;
+      border-bottom:1px solid #ddd;
+      text-align:left;
+      vertical-align:middle
+    }
+    th{background:#eee}
+    img{
+      width:55px;
+      height:55px;
+      object-fit:cover;
+      border-radius:5px
+    }
+    .actions{
+      display:flex;
+      gap:6px;
+      align-items:center
+    }
+    .actions form{margin:0}
+    .message{
+      background:#e7f6e7;
+      border:1px solid #91c891;
+      padding:10px;
+      border-radius:5px
+    }
+    .error{
+      background:#ffe8e8;
+      border:1px solid #d99;
+      padding:10px;
+      border-radius:5px
+    }
+    code{
+      background:#eee;
+      padding:2px 5px;
+      border-radius:4px
+    }
+    pre{
+      background:#222;
+      color:#fff;
+      overflow:auto;
+      padding:12px;
+      border-radius:6px
+    }
+    @media(max-width:750px){
+      .grid,.status-grid{
+        grid-template-columns:1fr
+      }
+      table{font-size:13px}
+    }
   </style>
 </head>
+
 <body>
   <h1>Product Manager</h1>
-  <p class="small">Node.js + Express + Neon PostgreSQL + Vercel Blob + Vercel Cron</p>
+  <p class="small">
+    Node.js + Express + Neon PostgreSQL + Vercel Blob + Vercel Cron
+  </p>
 
-  <% if (message) { %><p class="message"><%= message %></p><% } %>
-  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <div class="status-grid">
+    <div class="status">
+      <strong>Database</strong><br>
+      <span class="ok">✓ Neon PostgreSQL</span>
+    </div>
+
+    <div class="status">
+      <strong>File storage</strong><br>
+
+      <% if (storage.connected) { %>
+        <span class="ok">
+          ✓ Vercel Blob (<%= storage.blobs.length %> files)
+        </span>
+      <% } else { %>
+        <span class="bad">✗ Vercel Blob not connected</span>
+      <% } %>
+
+      <br>
+      <a href="/api/storage">view storage API</a>
+    </div>
+
+    <div class="status">
+      <strong>Background task</strong><br>
+      <span class="ok">✓ Automatic Vercel Cron</span><br>
+      <span class="small">daily at 06:00 UTC</span>
+    </div>
+  </div>
+
+  <% if (!storage.connected) { %>
+    <div class="error">
+      <strong>File storage setup:</strong>
+      Vercel project → Storage → Create Database → Blob →
+      choose <strong>Public</strong> → connect to this project →
+      redeploy.
+    </div>
+  <% } %>
+
+  <% if (message) { %>
+    <p class="message"><%= message %></p>
+  <% } %>
+
+  <% if (error) { %>
+    <p class="error"><%= error %></p>
+  <% } %>
 
   <div class="card">
     <h2><%= editProduct ? "Edit product" : "Add product" %></h2>
 
-    <form action="<%= editProduct ? '/update/' + editProduct.id : '/create' %>" method="post" enctype="multipart/form-data">
+    <form
+      action="<%= editProduct ? '/update/' + editProduct.id : '/create' %>"
+      method="post"
+      enctype="multipart/form-data"
+    >
       <div class="grid">
-        <label>Name (String)
-          <input name="name" required minlength="2" maxlength="100" value="<%= editProduct?.name ?? '' %>">
+        <label>
+          Name (String)
+          <input
+            name="name"
+            required
+            minlength="2"
+            maxlength="100"
+            value="<%= editProduct?.name ?? '' %>"
+          >
         </label>
 
-        <label>Quantity (Integer)
-          <input name="quantity" type="number" min="0" step="1" required value="<%= editProduct?.quantity ?? 0 %>">
+        <label>
+          Quantity (Integer)
+          <input
+            name="quantity"
+            type="number"
+            min="0"
+            step="1"
+            required
+            value="<%= editProduct?.quantity ?? 0 %>"
+          >
         </label>
 
-        <label>Price (Decimal)
-          <input name="price" type="number" min="0" step="0.01" required value="<%= editProduct?.price ?? '0.00' %>">
+        <label>
+          Price (Decimal)
+          <input
+            name="price"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            value="<%= editProduct?.price ?? '0.00' %>"
+          >
         </label>
 
-        <label>Restock date (Date)
-          <input name="restock_date" type="date"
-            value="<%= editProduct?.restock_date ? new Date(editProduct.restock_date).toISOString().slice(0,10) : '' %>">
+        <label>
+          Restock date (Date)
+          <input
+            name="restock_date"
+            type="date"
+            value="<%= editProduct?.restock_date
+              ? new Date(editProduct.restock_date).toISOString().slice(0,10)
+              : '' %>"
+          >
         </label>
 
-        <label>Image (PNG/JPG)
-          <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+        <label>
+          Image (PNG/JPG)
+          <input
+            name="image"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+          >
         </label>
 
         <label style="padding-top:28px">
-          <input name="available" type="checkbox" <%= !editProduct || editProduct.available ? "checked" : "" %>>
+          <input
+            name="available"
+            type="checkbox"
+            <%= !editProduct || editProduct.available ? "checked" : "" %>
+          >
           Available (Boolean)
         </label>
       </div>
 
       <p>
-        <button type="submit"><%= editProduct ? "Save changes" : "Create product" %></button>
-        <% if (editProduct) { %><a class="button secondary" href="/">Cancel</a><% } %>
+        <button type="submit">
+          <%= editProduct ? "Save changes" : "Create product" %>
+        </button>
+
+        <% if (editProduct) { %>
+          <a class="button secondary" href="/">Cancel</a>
+        <% } %>
       </p>
     </form>
   </div>
@@ -72,22 +265,60 @@
       <div style="overflow-x:auto">
         <table>
           <thead>
-            <tr><th>Image</th><th>Name</th><th>Qty</th><th>Price</th><th>Available</th><th>Restock</th><th>Actions</th></tr>
+            <tr>
+              <th>Image</th>
+              <th>Name</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Available</th>
+              <th>Restock</th>
+              <th>Actions</th>
+            </tr>
           </thead>
+
           <tbody>
             <% products.forEach(product => { %>
               <tr>
-                <td><% if (product.image_url) { %><img src="<%= product.image_url %>" alt=""><% } else { %>—<% } %></td>
+                <td>
+                  <% if (product.image_url) { %>
+                    <a href="<%= product.image_url %>" target="_blank">
+                      <img src="<%= product.image_url %>" alt="">
+                    </a>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+
                 <td><%= product.name %></td>
                 <td><%= product.quantity %></td>
                 <td>€<%= Number(product.price).toFixed(2) %></td>
                 <td><%= product.available ? "Yes" : "No" %></td>
-                <td><%= product.restock_date ? new Date(product.restock_date).toISOString().slice(0,10) : "—" %></td>
+                <td>
+                  <%= product.restock_date
+                    ? new Date(product.restock_date).toISOString().slice(0,10)
+                    : "—" %>
+                </td>
+
                 <td>
                   <div class="actions">
-                    <a class="button secondary" href="/?edit=<%= product.id %>">Edit</a>
-                    <form action="/delete/<%= product.id %>" method="post" onsubmit="return confirm('Delete this product?')">
-                      <button class="danger" type="submit">Delete</button>
+                    <a
+                      class="button secondary"
+                      href="/?edit=<%= product.id %>"
+                    >
+                      Edit
+                    </a>
+
+                    <form
+                      action="/delete/<%= product.id %>"
+                      method="post"
+                      onsubmit="return confirm('Delete this product?')"
+                    >
+                      <button
+                        class="danger"
+                        type="submit"
+                      >
+                        Delete
+                      </button>
                     </form>
                   </div>
                 </td>
@@ -100,27 +331,149 @@
   </div>
 
   <div class="card">
-    <h2>Background task</h2>
-    <p>Vercel Cron automatically changes <code>available=false</code> when <code>quantity=0</code>.</p>
-    <form action="/run-background" method="post"><button type="submit">Run now for demo</button></form>
+    <h2>Vercel Blob storage</h2>
 
-    <h3>Last runs</h3>
-    <% if (!runs.length) { %><p class="small">No runs yet.</p><% } else { %>
-      <table>
-        <thead><tr><th>Time</th><th>Changed products</th></tr></thead>
-        <tbody>
-          <% runs.forEach(run => { %>
-            <tr><td><%= new Date(run.ran_at).toLocaleString() %></td><td><%= run.changed_count %></td></tr>
-          <% }) %>
-        </tbody>
-      </table>
+    <% if (storage.connected) { %>
+      <p>
+        Storage connected.
+        Uploaded PNG/JPG files are stored in
+        <strong>Vercel Blob</strong>.
+      </p>
+
+      <% if (!storage.blobs.length) { %>
+        <p class="small">
+          Blob store is empty. Upload an image with a product.
+        </p>
+      <% } else { %>
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Size</th>
+              <th>Open</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% storage.blobs.forEach(blob => { %>
+              <tr>
+                <td><%= blob.pathname %></td>
+                <td><%= blob.size %> bytes</td>
+                <td>
+                  <a href="<%= blob.url %>" target="_blank">
+                    open file
+                  </a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    <% } else { %>
+      <p>
+        No Blob store connected yet.
+      </p>
+
+      <p>
+        Vercel → your project → <strong>Storage</strong> →
+        <strong>Create Database</strong> →
+        <strong>Blob</strong> → <strong>Public</strong>.
+      </p>
     <% } %>
   </div>
 
   <div class="card">
-    <h2>Public API</h2>
-    <p><a href="/api/products"><code>GET /api/products</code></a></p>
-    <p><code>curl https://YOUR-PROJECT.vercel.app/api/products</code></p>
+    <h2>Background task</h2>
+
+    <p>
+      <strong>Automatic:</strong>
+      Vercel Cron calls
+      <code>/api/cron/stock-check</code>
+      every day at 06:00 UTC.
+    </p>
+
+    <p>
+      It finds products where
+      <code>quantity = 0</code>
+      and automatically changes
+      <code>available = false</code>.
+    </p>
+
+    <form action="/run-background" method="post">
+      <button type="submit">
+        Run now for demo
+      </button>
+    </form>
+
+    <h3>Last runs</h3>
+
+    <% if (!runs.length) { %>
+      <p class="small">No runs yet.</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Changed products</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% runs.forEach(run => { %>
+            <tr>
+              <td>
+                <%= new Date(run.ran_at).toLocaleString() %>
+              </td>
+              <td><%= run.source %></td>
+              <td><%= run.changed_count %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <p class="small">
+      When automatic Vercel Cron runs, Source will show
+      <strong>vercel-cron</strong>.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Public REST API</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>URL</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr><td>GET</td><td><code>/api/products</code></td><td>List products</td></tr>
+        <tr><td>GET</td><td><code>/api/products/1</code></td><td>Read one</td></tr>
+        <tr><td>POST</td><td><code>/api/products</code></td><td>Create</td></tr>
+        <tr><td>PUT</td><td><code>/api/products/1</code></td><td>Replace/update</td></tr>
+        <tr><td>PATCH</td><td><code>/api/products/1</code></td><td>Partial update</td></tr>
+        <tr><td>DELETE</td><td><code>/api/products/1</code></td><td>Delete</td></tr>
+        <tr><td>GET</td><td><code>/api/storage</code></td><td>Show Blob files</td></tr>
+        <tr><td>GET</td><td><code>/api/background-runs</code></td><td>Background logs</td></tr>
+        <tr><td>POST</td><td><code>/api/background/run</code></td><td>Run task now</td></tr>
+        <tr><td>GET</td><td><code>/api/status</code></td><td>Architecture/status</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Easy curl test</h3>
+
+    <pre>curl https://deivascrud.vercel.app/api/products</pre>
+
+    <h3>Create through API</h3>
+
+    <pre>curl -X POST https://deivascrud.vercel.app/api/products ^
+-H "Content-Type: application/json" ^
+-d "{\"name\":\"Keyboard\",\"quantity\":5,\"price\":49.99,\"available\":true,\"restock_date\":\"2026-10-20\"}"</pre>
   </div>
 </body>
 </html>
