@@ -15,6 +15,7 @@ app.set("views", "./views");
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.static("public"));
 
 let schemaReady = false;
 
@@ -22,6 +23,7 @@ function db() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL missing. Connect Neon in Vercel.");
   }
+
   return neon(process.env.DATABASE_URL);
 }
 
@@ -51,7 +53,6 @@ async function ensureSchema() {
     )
   `;
 
-  // Small migration for projects that already had the old table.
   await sql`
     ALTER TABLE background_runs
     ADD COLUMN IF NOT EXISTS source VARCHAR(30) NOT NULL DEFAULT 'unknown'
@@ -69,7 +70,7 @@ app.use(async (req, res, next) => {
 
     res.status(500).send(`
       <h2>Database not connected</h2>
-      <p>Vercel project -> Storage -> Neon -> connect database.</p>
+      <p>Vercel project → Storage / Marketplace → Neon → Connect.</p>
       <pre>${error.message}</pre>
     `);
   }
@@ -202,9 +203,7 @@ async function uploadImage(file) {
   if (!file) return null;
 
   if (!allowedImage(file)) {
-    throw new Error(
-      "Only PNG, JPG, WEBP and GIF files are allowed."
-    );
+    throw new Error("Only PNG, JPG, WEBP and GIF files are allowed.");
   }
 
   const safeName = file.originalname.replace(
@@ -212,8 +211,9 @@ async function uploadImage(file) {
     "_"
   );
 
+  // Vercel Blob. New connected stores can authenticate with Vercel OIDC.
   return await put(
-    `products/${Date.now()}-${safeName}`,
+    `keyboards/${Date.now()}-${safeName}`,
     file.buffer,
     {
       access: "public",
@@ -226,7 +226,7 @@ async function uploadImage(file) {
 async function getStorageInfo() {
   try {
     const result = await list({
-      prefix: "products/",
+      prefix: "keyboards/",
       limit: 100
     });
 
@@ -266,7 +266,7 @@ async function runBackgroundTask(source) {
 }
 
 // ------------------------------------------------------
-// WEB APP
+// STORE PAGES
 // ------------------------------------------------------
 
 app.get("/", async (req, res) => {
@@ -278,14 +278,45 @@ app.get("/", async (req, res) => {
     ORDER BY id DESC
   `;
 
-  const runs = await sql`
+  res.render("store", { products });
+});
+
+app.get("/product/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const sql = db();
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).send("Invalid product ID");
+  }
+
+  const rows = await sql`
     SELECT *
-    FROM background_runs
-    ORDER BY id DESC
-    LIMIT 8
+    FROM products
+    WHERE id = ${id}
+    LIMIT 1
   `;
 
-  const storage = await getStorageInfo();
+  if (!rows[0]) {
+    return res.status(404).send("Keyboard not found");
+  }
+
+  res.render("product", {
+    product: rows[0]
+  });
+});
+
+// ------------------------------------------------------
+// ADMIN CRUD PAGE
+// ------------------------------------------------------
+
+app.get("/admin", async (req, res) => {
+  const sql = db();
+
+  const products = await sql`
+    SELECT *
+    FROM products
+    ORDER BY id DESC
+  `;
 
   let editProduct = null;
 
@@ -304,10 +335,8 @@ app.get("/", async (req, res) => {
     }
   }
 
-  res.render("index", {
+  res.render("admin", {
     products,
-    runs,
-    storage,
     editProduct,
     message: req.query.message ?? "",
     error: req.query.error ?? ""
@@ -325,9 +354,7 @@ app.post(
 
       if (errors.length) {
         return res.redirect(
-          `/?error=${encodeURIComponent(
-            errors.join(" ")
-          )}`
+          `/admin?error=${encodeURIComponent(errors.join(" "))}`
         );
       }
 
@@ -354,16 +381,12 @@ app.post(
           )
       `;
 
-      res.redirect(
-        "/?message=Product created"
-      );
+      res.redirect("/admin?message=Keyboard created");
     } catch (error) {
       console.error(error);
 
       res.redirect(
-        `/?error=${encodeURIComponent(
-          error.message
-        )}`
+        `/admin?error=${encodeURIComponent(error.message)}`
       );
     }
   }
@@ -376,21 +399,16 @@ app.post(
     try {
       const id = Number(req.params.id);
       const sql = db();
-
       const { errors, data } =
         validateProduct(req.body);
 
       if (!Number.isInteger(id)) {
-        return res.redirect(
-          "/?error=Invalid product ID"
-        );
+        return res.redirect("/admin?error=Invalid product ID");
       }
 
       if (errors.length) {
         return res.redirect(
-          `/?error=${encodeURIComponent(
-            errors.join(" ")
-          )}&edit=${id}`
+          `/admin?edit=${id}&error=${encodeURIComponent(errors.join(" "))}`
         );
       }
 
@@ -404,25 +422,19 @@ app.post(
       const current = rows[0];
 
       if (!current) {
-        return res.redirect(
-          "/?error=Product not found"
-        );
+        return res.redirect("/admin?error=Keyboard not found");
       }
 
       let imageUrl = current.image_url;
 
       if (req.file) {
-        const image =
-          await uploadImage(req.file);
+        const image = await uploadImage(req.file);
 
         if (current.image_url) {
           try {
             await del(current.image_url);
           } catch (error) {
-            console.warn(
-              "Old image delete warning:",
-              error.message
-            );
+            console.warn("Old image delete warning:", error.message);
           }
         }
 
@@ -441,16 +453,12 @@ app.post(
         WHERE id = ${id}
       `;
 
-      res.redirect(
-        "/?message=Product updated"
-      );
+      res.redirect("/admin?message=Keyboard updated");
     } catch (error) {
       console.error(error);
 
       res.redirect(
-        `/?error=${encodeURIComponent(
-          error.message
-        )}`
+        `/admin?error=${encodeURIComponent(error.message)}`
       );
     }
   }
@@ -472,10 +480,7 @@ app.post("/delete/:id", async (req, res) => {
       try {
         await del(rows[0].image_url);
       } catch (error) {
-        console.warn(
-          "Image delete warning:",
-          error.message
-        );
+        console.warn("Blob delete warning:", error.message);
       }
     }
 
@@ -484,46 +489,65 @@ app.post("/delete/:id", async (req, res) => {
       WHERE id = ${id}
     `;
 
-    res.redirect(
-      "/?message=Product deleted"
-    );
+    res.redirect("/admin?message=Keyboard deleted");
   } catch (error) {
     console.error(error);
 
     res.redirect(
-      `/?error=${encodeURIComponent(
-        error.message
-      )}`
+      `/admin?error=${encodeURIComponent(error.message)}`
     );
   }
 });
 
-app.post(
-  "/run-background",
-  async (req, res) => {
-    try {
-      const count =
-        await runBackgroundTask(
-          "manual-demo"
-        );
+// ------------------------------------------------------
+// SYSTEM / CLOUD PAGE
+// ------------------------------------------------------
 
-      res.redirect(
-        `/?message=${encodeURIComponent(
-          `Background task: changed ${count} product(s).`
-        )}`
-      );
-    } catch (error) {
-      res.redirect(
-        `/?error=${encodeURIComponent(
-          error.message
-        )}`
-      );
-    }
+app.get("/system", async (req, res) => {
+  const sql = db();
+
+  const storage = await getStorageInfo();
+
+  const runs = await sql`
+    SELECT *
+    FROM background_runs
+    ORDER BY id DESC
+    LIMIT 10
+  `;
+
+  const productCountRows = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM products
+  `;
+
+  res.render("system", {
+    storage,
+    runs,
+    productCount: productCountRows[0]?.count ?? 0,
+    message: req.query.message ?? "",
+    error: req.query.error ?? ""
+  });
+});
+
+app.post("/run-background", async (req, res) => {
+  try {
+    const count =
+      await runBackgroundTask("manual-demo");
+
+    res.redirect(
+      `/system?message=${encodeURIComponent(
+        `Background task finished. Changed ${count} product(s).`
+      )}`
+    );
+  } catch (error) {
+    res.redirect(
+      `/system?error=${encodeURIComponent(error.message)}`
+    );
   }
-);
+});
 
 // ------------------------------------------------------
-// PUBLIC PRODUCT API
+// FULL PUBLIC REST API
 // ------------------------------------------------------
 
 app.get("/api/products", async (req, res) => {
@@ -546,251 +570,190 @@ app.get("/api/products", async (req, res) => {
   res.json(products);
 });
 
-app.get(
-  "/api/products/:id",
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const sql = db();
+app.get("/api/products/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const sql = db();
 
-    if (!Number.isInteger(id)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid product ID" });
-    }
+  const rows = await sql`
+    SELECT *
+    FROM products
+    WHERE id = ${id}
+    LIMIT 1
+  `;
 
-    const rows = await sql`
-      SELECT *
-      FROM products
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-
-    if (!rows[0]) {
-      return res
-        .status(404)
-        .json({ error: "Product not found" });
-    }
-
-    res.json(rows[0]);
-  }
-);
-
-app.post(
-  "/api/products",
-  async (req, res) => {
-    const sql = db();
-
-    const { errors, data } =
-      validateApiProduct(req.body);
-
-    if (errors.length) {
-      return res
-        .status(400)
-        .json({ errors });
-    }
-
-    const rows = await sql`
-      INSERT INTO products
-        (
-          name,
-          quantity,
-          price,
-          available,
-          restock_date
-        )
-      VALUES
-        (
-          ${data.name},
-          ${data.quantity},
-          ${data.price},
-          ${data.available},
-          ${data.restockDate}
-        )
-      RETURNING *
-    `;
-
-    res.status(201).json(rows[0]);
-  }
-);
-
-app.put(
-  "/api/products/:id",
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const sql = db();
-
-    if (!Number.isInteger(id)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid product ID" });
-    }
-
-    const { errors, data } =
-      validateApiProduct(req.body);
-
-    if (errors.length) {
-      return res
-        .status(400)
-        .json({ errors });
-    }
-
-    const rows = await sql`
-      UPDATE products
-      SET
-        name = ${data.name},
-        quantity = ${data.quantity},
-        price = ${data.price},
-        available = ${data.available},
-        restock_date = ${data.restockDate}
-      WHERE id = ${id}
-      RETURNING *
-    `;
-
-    if (!rows[0]) {
-      return res
-        .status(404)
-        .json({ error: "Product not found" });
-    }
-
-    res.json(rows[0]);
-  }
-);
-
-app.patch(
-  "/api/products/:id",
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const sql = db();
-
-    if (!Number.isInteger(id)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid product ID" });
-    }
-
-    const currentRows = await sql`
-      SELECT *
-      FROM products
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-
-    const current = currentRows[0];
-
-    if (!current) {
-      return res
-        .status(404)
-        .json({ error: "Product not found" });
-    }
-
-    const merged = {
-      name:
-        req.body.name ??
-        current.name,
-      quantity:
-        req.body.quantity ??
-        current.quantity,
-      price:
-        req.body.price ??
-        Number(current.price),
-      available:
-        req.body.available ??
-        current.available,
-      restock_date:
-        req.body.restock_date ??
-        (
-          current.restock_date
-            ? new Date(
-                current.restock_date
-              )
-                .toISOString()
-                .slice(0, 10)
-            : null
-        )
-    };
-
-    const { errors, data } =
-      validateApiProduct(merged);
-
-    if (errors.length) {
-      return res
-        .status(400)
-        .json({ errors });
-    }
-
-    const rows = await sql`
-      UPDATE products
-      SET
-        name = ${data.name},
-        quantity = ${data.quantity},
-        price = ${data.price},
-        available = ${data.available},
-        restock_date = ${data.restockDate}
-      WHERE id = ${id}
-      RETURNING *
-    `;
-
-    res.json(rows[0]);
-  }
-);
-
-app.delete(
-  "/api/products/:id",
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const sql = db();
-
-    if (!Number.isInteger(id)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid product ID" });
-    }
-
-    const rows = await sql`
-      DELETE FROM products
-      WHERE id = ${id}
-      RETURNING image_url
-    `;
-
-    if (!rows[0]) {
-      return res
-        .status(404)
-        .json({ error: "Product not found" });
-    }
-
-    if (rows[0].image_url) {
-      try {
-        await del(rows[0].image_url);
-      } catch (error) {
-        console.warn(
-          "Blob delete warning:",
-          error.message
-        );
-      }
-    }
-
-    res.json({
-      deleted: true,
-      id
+  if (!rows[0]) {
+    return res.status(404).json({
+      error: "Product not found"
     });
   }
-);
+
+  res.json(rows[0]);
+});
+
+app.post("/api/products", async (req, res) => {
+  const sql = db();
+
+  const { errors, data } =
+    validateApiProduct(req.body);
+
+  if (errors.length) {
+    return res.status(400).json({ errors });
+  }
+
+  const rows = await sql`
+    INSERT INTO products
+      (
+        name,
+        quantity,
+        price,
+        available,
+        restock_date
+      )
+    VALUES
+      (
+        ${data.name},
+        ${data.quantity},
+        ${data.price},
+        ${data.available},
+        ${data.restockDate}
+      )
+    RETURNING *
+  `;
+
+  res.status(201).json(rows[0]);
+});
+
+app.put("/api/products/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const sql = db();
+
+  const { errors, data } =
+    validateApiProduct(req.body);
+
+  if (errors.length) {
+    return res.status(400).json({ errors });
+  }
+
+  const rows = await sql`
+    UPDATE products
+    SET
+      name = ${data.name},
+      quantity = ${data.quantity},
+      price = ${data.price},
+      available = ${data.available},
+      restock_date = ${data.restockDate}
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (!rows[0]) {
+    return res.status(404).json({
+      error: "Product not found"
+    });
+  }
+
+  res.json(rows[0]);
+});
+
+app.patch("/api/products/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const sql = db();
+
+  const currentRows = await sql`
+    SELECT *
+    FROM products
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+
+  const current = currentRows[0];
+
+  if (!current) {
+    return res.status(404).json({
+      error: "Product not found"
+    });
+  }
+
+  const merged = {
+    name: req.body.name ?? current.name,
+    quantity: req.body.quantity ?? current.quantity,
+    price: req.body.price ?? Number(current.price),
+    available: req.body.available ?? current.available,
+    restock_date:
+      req.body.restock_date ??
+      (
+        current.restock_date
+          ? new Date(current.restock_date)
+              .toISOString()
+              .slice(0, 10)
+          : null
+      )
+  };
+
+  const { errors, data } =
+    validateApiProduct(merged);
+
+  if (errors.length) {
+    return res.status(400).json({ errors });
+  }
+
+  const rows = await sql`
+    UPDATE products
+    SET
+      name = ${data.name},
+      quantity = ${data.quantity},
+      price = ${data.price},
+      available = ${data.available},
+      restock_date = ${data.restockDate}
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  res.json(rows[0]);
+});
+
+app.delete("/api/products/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const sql = db();
+
+  const rows = await sql`
+    DELETE FROM products
+    WHERE id = ${id}
+    RETURNING image_url
+  `;
+
+  if (!rows[0]) {
+    return res.status(404).json({
+      error: "Product not found"
+    });
+  }
+
+  if (rows[0].image_url) {
+    try {
+      await del(rows[0].image_url);
+    } catch (error) {
+      console.warn("Blob delete warning:", error.message);
+    }
+  }
+
+  res.json({
+    deleted: true,
+    id
+  });
+});
 
 // ------------------------------------------------------
-// STORAGE API
+// STORAGE / STATUS API
 // ------------------------------------------------------
 
 app.get("/api/storage", async (req, res) => {
-  const storage =
-    await getStorageInfo();
+  const storage = await getStorageInfo();
 
   if (!storage.connected) {
     return res.status(503).json({
       connected: false,
       provider: "Vercel Blob",
-      error: storage.error,
-      setup:
-        "Vercel project -> Storage -> Create Database -> Blob -> Public"
+      error: storage.error
     });
   }
 
@@ -798,151 +761,96 @@ app.get("/api/storage", async (req, res) => {
     connected: true,
     provider: "Vercel Blob",
     fileCount: storage.blobs.length,
-    files: storage.blobs.map(
-      blob => ({
-        pathname: blob.pathname,
-        url: blob.url,
-        size: blob.size,
-        uploadedAt: blob.uploadedAt
-      })
-    )
+    files: storage.blobs
   });
 });
 
-// ------------------------------------------------------
-// BACKGROUND TASK API
-// ------------------------------------------------------
+app.get("/api/background-runs", async (req, res) => {
+  const sql = db();
 
-app.get(
-  "/api/background-runs",
-  async (req, res) => {
-    const sql = db();
+  const runs = await sql`
+    SELECT *
+    FROM background_runs
+    ORDER BY id DESC
+    LIMIT 20
+  `;
 
-    const runs = await sql`
-      SELECT *
-      FROM background_runs
-      ORDER BY id DESC
-      LIMIT 20
-    `;
-
-    res.json(runs);
-  }
-);
-
-app.post(
-  "/api/background/run",
-  async (req, res) => {
-    try {
-      const count =
-        await runBackgroundTask(
-          "manual-api"
-        );
-
-      res.json({
-        ok: true,
-        changedProducts: count
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({
-          error: error.message
-        });
-    }
-  }
-);
-
-// THIS IS THE AUTOMATIC TASK.
-// Vercel Cron calls this automatically.
-// vercel.json schedule: 0 6 * * * = daily at 06:00 UTC.
-app.get(
-  "/api/cron/stock-check",
-  async (req, res) => {
-    try {
-      if (process.env.CRON_SECRET) {
-        const expected =
-          `Bearer ${process.env.CRON_SECRET}`;
-
-        if (
-          req.headers.authorization !==
-          expected
-        ) {
-          return res
-            .status(401)
-            .json({
-              error: "Unauthorized"
-            });
-        }
-      }
-
-      const count =
-        await runBackgroundTask(
-          "vercel-cron"
-        );
-
-      res.json({
-        ok: true,
-        automatic: true,
-        source: "Vercel Cron",
-        changedProducts: count,
-        task:
-          "quantity=0 products marked unavailable"
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({
-          error: error.message
-        });
-    }
-  }
-);
-
-// ------------------------------------------------------
-// STATUS API
-// ------------------------------------------------------
+  res.json(runs);
+});
 
 app.get("/api/status", async (req, res) => {
-  const storage =
-    await getStorageInfo();
+  const storage = await getStorageInfo();
 
   res.json({
-    app: "Product Manager",
+    project: "Keyboard Store",
     platform: "Vercel",
-    framework: "Node.js + Express",
+    webApp: "Node.js + Express + EJS",
     database: {
       provider: "Neon PostgreSQL",
-      connected: true
+      persistent: true
     },
     fileStorage: {
       provider: "Vercel Blob",
       connected: storage.connected,
+      persistent: true,
       fileCount: storage.blobs.length
     },
     backgroundTask: {
       provider: "Vercel Cron",
       automatic: true,
       schedule: "0 6 * * *",
-      meaning: "Every day at 06:00 UTC"
+      description:
+        "Every day, quantity=0 products are marked unavailable."
     }
   });
+});
+
+// ------------------------------------------------------
+// AUTOMATIC VERCEL CRON BACKGROUND TASK
+// ------------------------------------------------------
+
+app.get("/api/cron/stock-check", async (req, res) => {
+  try {
+    if (process.env.CRON_SECRET) {
+      const expected =
+        `Bearer ${process.env.CRON_SECRET}`;
+
+      if (
+        req.headers.authorization !== expected
+      ) {
+        return res.status(401).json({
+          error: "Unauthorized"
+        });
+      }
+    }
+
+    const count =
+      await runBackgroundTask("vercel-cron");
+
+    res.json({
+      ok: true,
+      automatic: true,
+      changedProducts: count,
+      task:
+        "Products with quantity 0 were marked unavailable."
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
 });
 
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    platform: "Vercel",
-    framework: "Express"
+    project: "Keyboard Store",
+    platform: "Vercel"
   });
 });
 
-const port =
-  process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-app.listen(
-  port,
-  () =>
-    console.log(
-      `Running on port ${port}`
-    )
-);
+app.listen(port, () => {
+  console.log(`Keyboard Store running on port ${port}`);
+});

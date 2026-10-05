@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title><%= product.name %> · DeivasKeys</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">DEIVAS<span>KEYS</span></a>
+      <div class="nav-links">
+        <a class="active" href="/">Store</a>
+        <a href="/admin">Admin</a>
+        <a href="/system">System</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page">
+    <a href="/" style="color:var(--muted)">← Back to store</a>
+
+    <div class="product-page" style="margin-top:22px">
+      <div class="product-large">
+        <% if (product.image_url) { %>
+          <img src="<%= product.image_url %>" alt="<%= product.name %>">
+        <% } else { %>
+          <div class="placeholder">⌨</div>
+        <% } %>
+      </div>
+
+      <div class="product-info">
+        <div class="eyebrow">Mechanical keyboard</div>
+        <h1><%= product.name %></h1>
+        <div class="price">€<%= Number(product.price).toFixed(2) %></div>
+
+        <% if (product.available && product.quantity > 0) { %>
+          <span class="badge in">IN STOCK</span>
+        <% } else { %>
+          <span class="badge out">OUT OF STOCK</span>
+        <% } %>
+
+        <div class="detail-list">
+          <div class="detail-row">
+            <span>Product ID</span>
+            <strong>#<%= product.id %></strong>
+          </div>
+          <div class="detail-row">
+            <span>Quantity</span>
+            <strong><%= product.quantity %></strong>
+          </div>
+          <div class="detail-row">
+            <span>Available</span>
+            <strong><%= product.available ? "Yes" : "No" %></strong>
+          </div>
+          <div class="detail-row">
+            <span>Restock date</span>
+            <strong>
+              <%= product.restock_date
+                ? new Date(product.restock_date).toISOString().slice(0,10)
+                : "Not set" %>
+            </strong>
+          </div>
+        </div>
+
+        <p style="color:var(--muted);line-height:1.6">
+          This is a demo product page. Product data is loaded from Neon PostgreSQL
+          and the image is loaded from persistent Vercel Blob storage.
+        </p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

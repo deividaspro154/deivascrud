@@ -1,0 +1,119 @@
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="/">DEIVAS<span>KEYS</span></a>
+
+    <div class="nav-links">
+      <a href="/">Store</a>
+      <a href="/admin">Admin</a>
+      <a href="/system">System</a>
+    </div>
+  </div>
+</nav>
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DeivasKeys</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">DEIVAS<span>KEYS</span></a>
+      <div class="nav-links">
+        <a class="active" href="/">Store</a>
+        <a href="/admin">Admin</a>
+        <a href="/system">System</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Mechanical keyboard store</div>
+        <h1>KEYBOARDS<br>BUILT DIFFERENT.</h1>
+        <p>
+          Small cloud computing project: real CRUD, persistent database,
+          Vercel Blob images, public REST API and an automatic background task.
+        </p>
+        <a class="button" href="#keyboards">Browse keyboards</a>
+      </div>
+
+      <div class="hero-box">
+        <div class="hero-stat">
+          <span>Platform</span>
+          <strong>Vercel</strong>
+        </div>
+        <div class="hero-stat">
+          <span>Database</span>
+          <strong>Neon PostgreSQL</strong>
+        </div>
+        <div class="hero-stat">
+          <span>Files</span>
+          <strong>Vercel Blob</strong>
+        </div>
+        <div class="hero-stat">
+          <span>Background</span>
+          <strong>Vercel Cron</strong>
+        </div>
+      </div>
+    </section>
+
+    <section id="keyboards">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Catalog</div>
+          <h2>Featured keyboards</h2>
+        </div>
+        <p><%= products.length %> product(s)</p>
+      </div>
+
+      <div class="products">
+        <% products.forEach(product => { %>
+          <a class="product-card" href="/product/<%= product.id %>">
+            <div class="product-image">
+              <% if (product.image_url) { %>
+                <img src="<%= product.image_url %>" alt="<%= product.name %>">
+              <% } else { %>
+                <div class="placeholder">⌨</div>
+              <% } %>
+            </div>
+
+            <div class="product-body">
+              <div class="product-top">
+                <div class="product-name"><%= product.name %></div>
+                <div class="price">€<%= Number(product.price).toFixed(2) %></div>
+              </div>
+
+              <div class="meta">
+                Stock: <%= product.quantity %>
+              </div>
+
+              <% if (product.available && product.quantity > 0) { %>
+                <span class="badge in">IN STOCK</span>
+              <% } else { %>
+                <span class="badge out">OUT OF STOCK</span>
+              <% } %>
+            </div>
+          </a>
+        <% }) %>
+
+        <% if (!products.length) { %>
+          <div class="panel">
+            No keyboards yet. Open <strong>Admin</strong> and create one.
+          </div>
+        <% } %>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      DeivasKeys · Cloud Computing CRUD project
+    </div>
+  </footer>
+</body>
+</html>

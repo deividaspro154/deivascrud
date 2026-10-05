@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>System · DeivasKeys</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">DEIVAS<span>KEYS</span></a>
+      <div class="nav-links">
+        <a href="/">Store</a>
+        <a href="/admin">Admin</a>
+        <a class="active" href="/system">System</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Cloud architecture</div>
+        <h1>System</h1>
+      </div>
+    </div>
+
+    <% if (message) { %>
+      <div class="notice ok"><%= message %></div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="notice error"><%= error %></div>
+    <% } %>
+
+    <div class="system-grid">
+      <div class="system-card">
+        <div class="system-label">Database</div>
+        <div class="system-value">Neon PostgreSQL</div>
+        <p style="color:var(--muted)">Persistent product data</p>
+      </div>
+
+      <div class="system-card">
+        <div class="system-label">File storage</div>
+        <div class="system-value">
+          <%= storage.connected ? "Vercel Blob ✓" : "Not connected ✕" %>
+        </div>
+        <p style="color:var(--muted)">
+          <%= storage.blobs.length %> uploaded file(s)
+        </p>
+      </div>
+
+      <div class="system-card">
+        <div class="system-label">Background</div>
+        <div class="system-value">Vercel Cron</div>
+        <p style="color:var(--muted)">Automatic daily task</p>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>Vercel Blob files</h2>
+
+      <% if (!storage.connected) { %>
+        <div class="notice error">
+          Blob is not connected. In Vercel create/connect a Blob store
+          to this project, then redeploy.
+        </div>
+      <% } else if (!storage.blobs.length) { %>
+        <p>No images uploaded yet.</p>
+      <% } else { %>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Size</th>
+                <th>URL</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <% storage.blobs.forEach(blob => { %>
+                <tr>
+                  <td><%= blob.pathname %></td>
+                  <td><%= blob.size %> bytes</td>
+                  <td>
+                    <a href="<%= blob.url %>" target="_blank" style="color:var(--accent)">
+                      Open file
+                    </a>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Automatic background task</h2>
+
+      <p style="color:var(--muted)">
+        Vercel Cron automatically calls
+        <code>/api/cron/stock-check</code>.
+        Products with quantity 0 are changed to unavailable.
+      </p>
+
+      <form action="/run-background" method="post">
+        <button type="submit">Run now for demo</button>
+      </form>
+
+      <h3 style="margin-top:24px">Last runs</h3>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Changed</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% runs.forEach(run => { %>
+              <tr>
+                <td><%= new Date(run.ran_at).toLocaleString() %></td>
+                <td><strong><%= run.source %></strong></td>
+                <td><%= run.changed_count %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Public REST API</h2>
+
+      <p style="color:var(--muted)">
+        Full CRUD API. You can test it with browser, curl or Postman.
+      </p>
+
+      <table>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/products</code></td><td>List</td></tr>
+          <tr><td>GET</td><td><code>/api/products/:id</code></td><td>Read</td></tr>
+          <tr><td>POST</td><td><code>/api/products</code></td><td>Create</td></tr>
+          <tr><td>PUT</td><td><code>/api/products/:id</code></td><td>Update</td></tr>
+          <tr><td>PATCH</td><td><code>/api/products/:id</code></td><td>Partial update</td></tr>
+          <tr><td>DELETE</td><td><code>/api/products/:id</code></td><td>Delete</td></tr>
+          <tr><td>GET</td><td><code>/api/storage</code></td><td>Blob storage</td></tr>
+          <tr><td>GET</td><td><code>/api/status</code></td><td>Cloud status</td></tr>
+          <tr><td>GET</td><td><code>/api/background-runs</code></td><td>Task logs</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Curl</h3>
+      <span class="code">curl https://deivascrud.vercel.app/api/products</span>
+
+      <h3>Create product via API</h3>
+      <span class="code">curl -X POST https://deivascrud.vercel.app/api/products -H "Content-Type: application/json" -d "{\"name\":\"Keychron K2\",\"quantity\":5,\"price\":89.99,\"available\":true,\"restock_date\":\"2026-10-20\"}"</span>
+    </section>
+
+    <section class="panel">
+      <h2>Architecture</h2>
+
+      <span class="code">Browser / curl
+      |
+      v
+Vercel Node.js + Express
+   |        |        |
+   v        v        v
+Neon DB   Blob    Vercel Cron
+Products  Images   Auto task</span>
+    </section>
+  </main>
+</body>
+</html>

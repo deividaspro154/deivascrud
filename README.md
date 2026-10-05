@@ -1,13 +1,62 @@
-# CHANGES — Product Manager Vercel
+# Modern Keyboard Store — changed files
 
-Only these files were changed:
+Replace only these files in your current project:
 
-- `server.js`
-- `views/index.ejs`
-- `package.json`
-- `README.md`
+```text
+server.js
+public/style.css
+views/store.ejs
+views/product.ejs
+views/admin.ejs
+views/system.ejs
+README.md
+```
 
-`vercel.json` stays unchanged and already contains the automatic Cron:
+Keep your existing:
+
+```text
+package.json
+vercel.json
+.gitignore
+```
+
+## Pages
+
+- `/` — keyboard store
+- `/product/:id` — one keyboard
+- `/admin` — CRUD
+- `/system` — Vercel Blob, Cron, DB and API
+
+## Storage
+
+The application stores uploaded PNG/JPG files in **Vercel Blob**.
+
+The code is:
+
+```js
+const blob = await put(
+  `keyboards/${Date.now()}-${safeName}`,
+  file.buffer,
+  {
+    access: "public",
+    addRandomSuffix: true,
+    contentType: file.mimetype
+  }
+);
+```
+
+The Blob URL is stored in Neon PostgreSQL.
+
+Check storage from the app:
+
+```text
+/system
+/api/storage
+```
+
+## Automatic background task
+
+Keep your existing `vercel.json`:
 
 ```json
 {
@@ -20,9 +69,35 @@ Only these files were changed:
 }
 ```
 
-That means Vercel automatically calls the stock-check route every day at 06:00 UTC.
+Vercel automatically calls the route.
 
-## New API endpoints
+The route:
+
+```text
+/api/cron/stock-check
+```
+
+does:
+
+```text
+quantity = 0
+      ↓
+available = false
+```
+
+Automatic runs are saved as:
+
+```text
+source = vercel-cron
+```
+
+Manual classroom demonstration uses:
+
+```text
+source = manual-demo
+```
+
+## Full API
 
 ```text
 GET     /api/products
@@ -33,135 +108,46 @@ PATCH   /api/products/:id
 DELETE  /api/products/:id
 
 GET     /api/storage
-GET     /api/background-runs
-POST    /api/background/run
 GET     /api/status
+GET     /api/background-runs
 ```
 
-## Where is file storage?
+## Deploy changes
 
-Uploaded PNG/JPG files are NOT stored in Neon.
+Copy these files into the existing project.
 
-They are stored in **Vercel Blob**.
-
-Create it in:
-
-```text
-Vercel
-→ your project
-→ Storage
-→ Create Database
-→ Blob
-→ Continue
-→ Access = Public
-→ Create
-```
-
-Use **Public** because the web page displays the uploaded images directly.
-
-After the Blob store is connected, redeploy the project.
-
-Then open:
-
-```text
-https://deivascrud.vercel.app/api/storage
-```
-
-It will show JSON with all uploaded files.
-
-The main page also now has a **Vercel Blob storage** section listing the files.
-
-## Important
-
-The package was updated to:
-
-```text
-@vercel/blob 2.8.x
-```
-
-so the current Vercel Blob authentication/setup is supported.
-
-## Deploy these changes
-
-Replace the four files in your existing project.
-
-Then in VS Code terminal:
+Then:
 
 ```powershell
-npm install
-git add server.js views/index.ejs package.json README.md package-lock.json
-git commit -m "Add full API storage status and background logs"
+git add .
+git commit -m "Add modern keyboard store pages"
 git push
 ```
 
-If `package-lock.json` does not exist yet, run `npm install` first.
+Vercel will redeploy automatically.
 
-Vercel should automatically redeploy after the GitHub push.
+## Blob setup
 
-## Check after deploy
+If `/system` says Blob is not connected:
 
-Open:
+1. Open Vercel project.
+2. Open Storage.
+3. Create/connect Vercel Blob.
+4. Connect it to this project.
+5. Redeploy.
 
-```text
-https://deivascrud.vercel.app/api/status
-```
+Then upload a keyboard PNG/JPG from `/admin`.
 
-You should get something like:
+## Defence navigation
 
-```json
-{
-  "platform": "Vercel",
-  "database": {
-    "provider": "Neon PostgreSQL",
-    "connected": true
-  },
-  "fileStorage": {
-    "provider": "Vercel Blob",
-    "connected": true
-  },
-  "backgroundTask": {
-    "provider": "Vercel Cron",
-    "automatic": true
-  }
-}
-```
-
-Then check:
-
-```text
-https://deivascrud.vercel.app/api/storage
-```
-
-If it says `connected: false`, Blob is not connected yet.
-
-## Background proof
-
-Create a product:
-
-```text
-Name: Test
-Quantity: 0
-Available: Yes
-```
-
-The automatic Cron will eventually change it to:
-
-```text
-Available: No
-```
-
-Background runs are saved in Neon.
-
-Open:
-
-```text
-/api/background-runs
-```
-
-Automatic runs have:
-
-```text
-source = vercel-cron
-```
-
-For the classroom demo you can click **Run now for demo**; that uses the same background function, but the log source is `manual-demo`.
+1. `/` — show web application/store.
+2. `/product/1` — show Read.
+3. `/admin` — Create, Update, Delete and list.
+4. Explain 5 data types:
+   - String
+   - Integer
+   - Decimal
+   - Boolean
+   - Date
+5. `/system` — show DB, file storage, background task and API.
+6. `/api/products` — show public JSON API.

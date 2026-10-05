@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin · DeivasKeys</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">DEIVAS<span>KEYS</span></a>
+      <div class="nav-links">
+        <a href="/">Store</a>
+        <a class="active" href="/admin">Admin</a>
+        <a href="/system">System</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">CRUD management</div>
+        <h1>Admin</h1>
+      </div>
+
+      <% if (editProduct) { %>
+        <a class="button secondary" href="/admin">Cancel edit</a>
+      <% } %>
+    </div>
+
+    <% if (message) { %>
+      <div class="notice ok"><%= message %></div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="notice error"><%= error %></div>
+    <% } %>
+
+    <section class="panel">
+      <h2><%= editProduct ? "Update keyboard" : "Create keyboard" %></h2>
+
+      <form
+        action="<%= editProduct ? '/update/' + editProduct.id : '/create' %>"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <div class="form-grid">
+          <label>
+            Name · String
+            <input
+              name="name"
+              required
+              minlength="2"
+              maxlength="100"
+              value="<%= editProduct?.name ?? '' %>"
+            >
+          </label>
+
+          <label>
+            Quantity · Integer
+            <input
+              name="quantity"
+              type="number"
+              min="0"
+              step="1"
+              required
+              value="<%= editProduct?.quantity ?? 0 %>"
+            >
+          </label>
+
+          <label>
+            Price · Decimal
+            <input
+              name="price"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value="<%= editProduct?.price ?? '0.00' %>"
+            >
+          </label>
+
+          <label>
+            Restock date · Date
+            <input
+              name="restock_date"
+              type="date"
+              value="<%= editProduct?.restock_date
+                ? new Date(editProduct.restock_date).toISOString().slice(0,10)
+                : '' %>"
+            >
+          </label>
+
+          <label>
+            Keyboard image · PNG/JPG
+            <input
+              name="image"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+            >
+          </label>
+
+          <label class="checkbox">
+            <input
+              name="available"
+              type="checkbox"
+              <%= !editProduct || editProduct.available ? "checked" : "" %>
+            >
+            Available · Boolean
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit">
+            <%= editProduct ? "Save changes" : "Create keyboard" %>
+          </button>
+
+          <% if (editProduct) { %>
+            <a class="button secondary" href="/admin">Cancel</a>
+          <% } %>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Product list</h2>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Name</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Available</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% products.forEach(product => { %>
+              <tr>
+                <td>
+                  <% if (product.image_url) { %>
+                    <img class="table-image" src="<%= product.image_url %>" alt="">
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+
+                <td><strong><%= product.name %></strong></td>
+                <td><%= product.quantity %></td>
+                <td>€<%= Number(product.price).toFixed(2) %></td>
+                <td><%= product.available ? "Yes" : "No" %></td>
+
+                <td>
+                  <div class="actions">
+                    <a
+                      class="button secondary"
+                      href="/admin?edit=<%= product.id %>"
+                    >
+                      Edit
+                    </a>
+
+                    <form
+                      action="/delete/<%= product.id %>"
+                      method="post"
+                      onsubmit="return confirm('Delete this keyboard?')"
+                    >
+                      <button class="danger" type="submit">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
